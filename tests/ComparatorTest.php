@@ -42,6 +42,18 @@ class ComparatorTest extends TestCase
         self::assertSame('std.baz', $path);
     }
 
+    public function testNullRoot(): void
+    {
+        $object = (object)['foo' => new stdClass(), 'bar' => new DateTimeImmutable()];
+        $tmp = (object)['object' => $object];
+
+        $snapshot1 = Snapshot::make($object);
+        $snapshot2 = Snapshot::make(bar: $object, tmp: $tmp);
+        $result = $this->createComparator()->compare($snapshot1, $snapshot2);
+
+        self::assertCount(2, $result);
+    }
+
     private function createComparator(): Comparator
     {
         return new Comparator();

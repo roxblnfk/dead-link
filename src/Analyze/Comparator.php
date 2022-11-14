@@ -56,7 +56,13 @@ final class Comparator
      */
     private function diffReferenceLists(array $offsetA, array $offsetB): array
     {
-        $fn = static fn (array $a, array $b): int => (int)($a[0] !== $b[0]);
+        // $fn = static fn (array $a, array $b): int => (int)($a[0] !== $b[0]);
+        $fn = static function (?array $a, ?array $b): int {
+            if ($a === null || $b === null) {
+                return (int)($a === null xor $b === null);
+            }
+            return (int)($a[0] !== $b[0]);
+        };
         $result1 = \array_udiff($offsetA, $offsetB, $fn);
         $result2 = \array_udiff($offsetB, $offsetA, $fn);
         return [...$result1, ...$result2];

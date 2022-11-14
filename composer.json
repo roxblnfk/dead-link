@@ -15,7 +15,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Roxblnfk\\DeadLink\\Test\\": "test/"
+            "Roxblnfk\\DeadLink\\Test\\": "tests/"
         }
     },
     "require": {},
