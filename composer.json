@@ -1,0 +1,33 @@
+{
+    "name": "roxblnfk/dead-link",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "roxblnfk",
+            "email": "roxblnfk@ya.ru"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Roxblnfk\\DeadLink\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Roxblnfk\\DeadLink\\Test\\": "test/"
+        }
+    },
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "vimeo/psalm": "dev-master",
+        "infection/infection": "*"
+    },
+    "config": {
+        "allow-plugins": {
+            "infection/extension-installer": true
+        }
+    },
+    "minimum-stability": "dev"
+}
