@@ -49,22 +49,27 @@ final class Comparator
     }
 
     /**
-     * @param ObjectReferencesList $a
-     * @param ObjectReferencesList $b
+     * @param ObjectReferencesList ...$references
      *
      * @return ObjectReferencesList
      */
-    private function diffReferenceLists(array $offsetA, array $offsetB): array
+    private function diffReferenceLists(array ...$references): array
     {
-        // $fn = static fn (array $a, array $b): int => (int)($a[0] !== $b[0]);
-        $fn = static function (?array $a, ?array $b): int {
-            if ($a === null || $b === null) {
-                return (int)($a === null xor $b === null);
+        $result = [];
+        $nullable = false;
+        $merger = static function (array $refs) use (&$nullable, &$result): void {
+            foreach ($refs as $ref) {
+                if ($ref === null) {
+                    $nullable = true;
+                    continue;
+                }
+                $result[\spl_object_id($ref[0])] = $ref;
             }
-            return (int)($a[0] !== $b[0]);
         };
-        $result1 = \array_udiff($offsetA, $offsetB, $fn);
-        $result2 = \array_udiff($offsetB, $offsetA, $fn);
-        return [...$result1, ...$result2];
+        \array_walk($references, $merger);
+        if ($nullable) {
+            $result[] = null;
+        }
+        return \array_values($result);
     }
 }

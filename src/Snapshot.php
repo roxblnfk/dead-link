@@ -160,7 +160,6 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
 
         // Merge new snapshot into current one
         foreach ($snapshot as $object => $references) {
-            $this->map[$object] = $references;
             $this->map->offsetSet(
                 $object,
                 $this->map->offsetExists($object)
@@ -246,12 +245,12 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
         $nullable = false;
         $column = [];
         $result = $ref1;
-        foreach ($ref1 as $reference) {
-            if ($reference === null) {
+        foreach ($ref1 as $ref) {
+            if ($ref === null) {
                 $nullable = true;
                 continue;
             }
-            $column[] = $reference;
+            $column[] = $ref[0];
         }
 
         foreach ($ref2 as $ref) {
