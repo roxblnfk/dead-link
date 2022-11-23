@@ -28,9 +28,17 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
     /** @var \WeakMap<object, int|non-empty-string> */
     private \WeakMap $rootObjects;
 
+    /** @var array<class-string, mixed> */
+    private array $ignoreClasses = [];
+    /** @var \WeakMap<object, mixed> */
+    private \WeakMap $ignoreObjects;
+    /** @var array<callable(object): bool> */
+    private array $ignoreCallables = [];
+
     private function __construct(object ...$objects) {
         $this->map = new \WeakMap();
         $this->rootObjects = new \WeakMap();
+        $this->ignoreObjects = new \WeakMap();
         foreach ($objects as $key => $object) {
             $this->rootObjects[$object] = $key;
         }
@@ -39,6 +47,13 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
     public function __clone()
     {
         $this->map = clone $this->map;
+        $this->rootObjects = clone $this->rootObjects;
+        $this->ignoreObjects = clone $this->ignoreObjects;
+    }
+
+    public function getRootAlias(object $object): int|string|null
+    {
+        return $this->rootObjects[$object] ?? null;
     }
 
     public static function make(object ...$objects): self
@@ -179,16 +194,79 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
         }
     }
 
-    public function clear(): void
+    /**
+     * Configure ignore list.
+     *
+     * @param object|class-string ...$objects
+     */
+    public function ignore(object|string|callable ...$objects): void
     {
-        foreach ($this->map as $object => $references) {
+        foreach ($objects as $object) {
+            if (\is_string($object)) {
+                $this->ignoreClasses[$object] = true;
+            } elseif (\is_callable($object)) {
+                $this->ignoreCallables[] = $object;
+            } else {
+                $this->ignoreObjects->offsetSet($object, true);
+            }
+        }
+    }
+
+    /**
+     * @param object|class-string $object
+     */
+    public function isIgnored(object|string $object): bool
+    {
+        if (\is_object($object)) {
+            if ($this->ignoreObjects->offsetExists($object)) {
+                return true;
+            }
+            $class = $object::class;
+        } else {
+            $class = $object;
+        }
+        if (\array_key_exists($class, $this->ignoreClasses)) {
+            return true;
+        }
+        foreach ($this->ignoreCallables as $callable) {
+            if ($callable($object)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Remove references to removed objects
+     *
+     * @param bool $removeIgnored Remove ignored objects and references to them
+     * @param bool $removeNulls Remove null-references (roots)
+     */
+    public function clear(bool $removeIgnored = true, bool $removeNulls = false): void
+    {
+        $reading = clone $this->map;
+        foreach ($reading as $object => $references) {
             $changed = false;
+            if ($removeIgnored && $this->isIgnored($object)) {
+                $this->map->offsetUnset($object);
+                continue;
+            }
             foreach ($references as $k => $reference) {
                 /** @var null|array{WeakReference, non-empty-string} $reference */
                 if ($reference === null) {
+                    if ($removeNulls) {
+                        $changed = true;
+                        unset($references[$k]);
+                    }
                     continue;
                 }
-                if ($reference[0]->get() === null) {
+                $target = $reference[0]->get();
+                if ($target === null) {
+                    $changed = true;
+                    unset($references[$k]);
+                    continue;
+                }
+                if ($removeIgnored && $this->isIgnored($target)) {
                     $changed = true;
                     unset($references[$k]);
                 }
@@ -228,8 +306,16 @@ final class Snapshot implements ArrayAccess, IteratorAggregate, Countable
 
             if (\is_object($value)) {
                 $result[] = [$value, $key];
+                continue;
             }
-            // todo array
+            if (\is_array($value)) {
+                // todo recursive
+                foreach ($value as $k => $v) {
+                    if (\is_object($v)) {
+                        $result[] = [$v, sprintf("%s[%s]", $key, $k)];
+                    }
+                }
+            }
         }
         return $result;
     }

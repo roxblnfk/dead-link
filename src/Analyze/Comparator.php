@@ -57,6 +57,40 @@ final class Comparator
     {
         $result = [];
         $nullable = false;
+        $counter = [];
+        $merger = static function (array $refs) use (&$nullable, &$result, &$counter): void {
+            foreach ($refs as $ref) {
+                if ($ref === null) {
+                    $nullable = true;
+                    continue;
+                }
+                $id = \spl_object_id($ref[0]);
+                $count = $counter[$id] ?? 0;
+                $counter[$id] = $count + 1;
+                $result[$id] = $ref;
+            }
+        };
+        \array_walk($references, $merger);
+        $result = \array_filter(
+            $result,
+            static fn (int $id): bool => $counter[$id] === 1,
+            ARRAY_FILTER_USE_KEY,
+        );
+        // if ($nullable) {
+        //     $result[] = null;
+        // }
+        return \array_values($result);
+    }
+
+    /**
+     * @param ObjectReferencesList ...$references
+     *
+     * @return ObjectReferencesList
+     */
+    private function mergeReferenceLists(array ...$references): array
+    {
+        $result = [];
+        $nullable = false;
         $merger = static function (array $refs) use (&$nullable, &$result): void {
             foreach ($refs as $ref) {
                 if ($ref === null) {
